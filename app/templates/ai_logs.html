@@ -1,0 +1,791 @@
+{% extends "base.html" %} {% block title %}AI日志 - Gemini Balance{%
+endblock %} {% block head_extra_styles %}
+<style>
+  .styled-table th {
+    position: sticky;
+    top: 0;
+    background-color: rgba(249, 250, 251, 0.95) !important;
+    color: #374151 !important;
+    z-index: 10;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  .styled-table tbody tr:hover {
+    background-color: rgba(59, 130, 246, 0.05) !important;
+  }
+  .styled-table td {
+    padding: 12px 20px;
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+    color: #374151;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  .btn-view-details {
+    background-color: #3b82f6 !important;
+    color: #ffffff !important;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+    border: 1px solid #2563eb !important;
+  }
+  .btn-view-details:hover {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3) !important;
+    transform: translateY(-1px) !important;
+  }
+  .status-success {
+    color: #16a34a;
+    font-weight: 600;
+  }
+  .status-error {
+    color: #dc2626;
+    font-weight: 600;
+  }
+  @media (max-width: 768px) {
+    .search-container { grid-template-columns: 1fr; }
+    .mobile-buttons-container {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 1rem !important;
+      width: 100% !important;
+    }
+    .buttons-container-responsive {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 0.5rem !important;
+      width: 100% !important;
+    }
+    .buttons-container-responsive button {
+      width: 100% !important;
+      justify-content: center !important;
+    }
+  }
+
+  input[type="text"],
+  input[type="datetime-local"],
+  select,
+  button {
+    height: 36px !important;
+  }
+  .form-input-themed {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    color: #374151 !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+  .form-input-themed:focus {
+    border-color: #3b82f6 !important;
+  }
+
+  select#pageSize {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    color: #374151 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+    appearance: none !important;
+    padding: 0.5rem 2.5rem 0.5rem 0.75rem !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.6rem center !important;
+    background-size: 1.2em 1.2em !important;
+    border-radius: 0.375rem !important;
+    cursor: pointer !important;
+  }
+
+  .nav-link {
+    background-color: rgba(229, 231, 235, 0.8) !important;
+    color: #374151 !important;
+    transition: all 0.2s ease-in-out;
+  }
+  .nav-link:hover {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    transform: scale(1.02);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  ul.pagination a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    color: #374151 !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    min-width: 36px;
+    transition: background-color 0.15s ease-in-out;
+  }
+  ul.pagination a:hover:not(.active):not(.disabled) {
+    background-color: rgba(229, 231, 235, 1) !important;
+  }
+  ul.pagination a.active {
+    background-color: #3b82f6 !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+    font-weight: 600;
+  }
+  ul.pagination a.disabled {
+    background-color: rgba(249, 250, 251, 0.5) !important;
+    color: rgba(156, 163, 175, 0.8) !important;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .modal .w-full.max-w-6xl {
+    background-color: #ffffff !important;
+    color: #374151 !important;
+    border: 1px solid #e5e7eb !important;
+  }
+  .modal pre {
+    background-color: #f1f5f9 !important;
+    color: #374151 !important;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .pagination-text {
+    color: #374151 !important;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container mx-auto px-4">
+  <div
+    class="rounded-2xl shadow-xl p-6 md:p-8"
+    style="
+      background-color: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    "
+  >
+    <h1 class="text-3xl font-extrabold text-center text-gray-800 mb-4">
+      <img
+        src="{{ static_url('icons/logo.png') }}"
+        alt="Gemini Balance Logo"
+        class="h-9 inline-block align-middle mr-2"
+      />
+      Gemini Balance - AI日志
+    </h1>
+
+    <!-- Navigation Tabs -->
+    <div class="nav-buttons-container flex justify-center mb-8 overflow-x-auto gap-2">
+      <a
+        href="/config"
+        class="nav-link whitespace-nowrap flex items-center justify-center gap-2 px-6 py-3 font-medium rounded-lg"
+      >
+        <i class="fas fa-cog"></i> 配置编辑
+      </a>
+      <a
+        href="/keys"
+        class="nav-link whitespace-nowrap flex items-center justify-center gap-2 px-6 py-3 font-medium rounded-lg"
+      >
+        <i class="fas fa-tachometer-alt"></i> 监控面板
+      </a>
+      <a
+        href="/logs"
+        class="nav-link whitespace-nowrap flex items-center justify-center gap-2 px-6 py-3 font-medium rounded-lg"
+      >
+        <i class="fas fa-exclamation-triangle"></i> 错误日志
+      </a>
+      <a
+        href="/ai-logs"
+        class="main-nav-btn whitespace-nowrap flex items-center justify-center gap-2 px-6 py-3 font-medium rounded-lg shadow-md"
+        style="background-color: #3b82f6 !important; color: #ffffff !important;"
+      >
+        <i class="fas fa-robot"></i> AI日志
+      </a>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div
+      class="rounded-xl p-6 shadow-lg"
+      style="background-color: rgba(255, 255, 255, 0.98); border: 1px solid rgba(0, 0, 0, 0.08);"
+    >
+      <h2 class="text-xl font-bold mb-6 pb-3 border-b flex items-center gap-2 text-gray-800">
+        <i class="fas fa-robot text-blue-500"></i> AI请求日志列表
+        <span class="text-sm font-normal text-gray-500 ml-2">(自动保留3天)</span>
+      </h2>
+
+      <!-- 搜索与操作控件 -->
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_auto] items-center gap-4 mb-6 mobile-buttons-container">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full">
+          <input
+            type="text"
+            id="modelSearch"
+            placeholder="搜索模型名称"
+            class="px-3 py-1 rounded-lg form-input-themed"
+          />
+          <input
+            type="text"
+            id="statusCodeSearch"
+            placeholder="搜索状态码"
+            class="px-3 py-1 rounded-lg form-input-themed"
+          />
+          <div class="grid grid-cols-2 gap-2 col-span-1 sm:col-span-2 lg:col-span-1">
+            <input
+              type="datetime-local"
+              id="startDate"
+              class="px-2 py-1 rounded-lg text-sm form-input-themed"
+              title="开始时间"
+            />
+            <input
+              type="datetime-local"
+              id="endDate"
+              class="px-2 py-1 rounded-lg text-sm form-input-themed"
+              title="结束时间"
+            />
+          </div>
+        </div>
+        <div class="flex items-center gap-3 flex-shrink-0 buttons-container-responsive">
+          <button
+            id="refreshBtn"
+            class="flex items-center justify-center px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all"
+            title="刷新日志"
+          >
+            <i class="fas fa-sync-alt mr-1.5"></i>刷新
+          </button>
+          <button
+            id="searchBtn"
+            class="flex items-center justify-center px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all"
+          >
+            <i class="fas fa-search mr-1.5"></i>搜索
+          </button>
+          <button
+            id="deleteSelectedBtn"
+            class="flex items-center justify-center px-4 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled
+          >
+            <i class="fas fa-trash-alt mr-1.5"></i>删除
+          </button>
+          <button
+            id="deleteAllLogsBtn"
+            class="flex items-center justify-center px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-all"
+            title="清空所有AI日志"
+          >
+            <i class="fas fa-dumpster-fire mr-1.5"></i>清空全部
+          </button>
+        </div>
+      </div>
+
+      <!-- 表格容器 -->
+      <div class="overflow-x-auto rounded-lg border mb-6" style="border-color: rgba(0, 0, 0, 0.12)">
+        <table class="styled-table w-full min-w-full text-sm">
+          <thead>
+            <tr class="text-left">
+              <th class="px-3 py-3 font-semibold rounded-tl-lg w-12 text-center">
+                <input
+                  type="checkbox"
+                  id="selectAllCheckbox"
+                  class="form-checkbox h-4 w-4 text-blue-500 rounded"
+                />
+              </th>
+              <th class="px-5 py-3 font-semibold">内容</th>
+              <th class="px-5 py-3 font-semibold text-right">输入</th>
+              <th class="px-5 py-3 font-semibold text-right">输出</th>
+              <th class="px-5 py-3 font-semibold text-right">总计</th>
+              <th class="px-5 py-3 font-semibold">模型</th>
+              <th class="px-5 py-3 font-semibold">时间</th>
+              <th class="px-5 py-3 font-semibold">状态码</th>
+              <th class="px-5 py-3 font-semibold">耗时</th>
+              <th class="px-5 py-3 font-semibold rounded-tr-lg text-center">操作</th>
+            </tr>
+          </thead>
+          <tbody id="aiLogsTable" class="divide-y">
+            <!-- 数据通过 JavaScript 动态加载 -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 状态指示器 -->
+      <div id="loadingIndicator" class="flex items-center justify-center p-8 hidden">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <p class="ml-4 text-lg text-gray-600 font-medium">加载中，请稍候...</p>
+      </div>
+
+      <div id="noDataMessage" class="text-center py-12 text-gray-600 hidden">
+        <i class="fas fa-inbox text-5xl mb-3"></i>
+        <p class="text-lg">暂无AI日志数据</p>
+      </div>
+
+      <div id="errorMessage" class="p-4 rounded-lg font-medium text-center hidden" style="background-color: rgba(220, 38, 38, 0.1); color: #dc2626">
+        <i class="fas fa-exclamation-circle mr-2"></i>
+        加载AI日志失败，请稍后重试。
+      </div>
+
+      <!-- 分页 -->
+      <div class="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
+        <div class="text-sm text-gray-700">
+          <label for="pageSize" class="font-medium pagination-text">每页显示:</label>
+          <select id="pageSize" class="rounded-md px-2 py-1 text-sm ml-1">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+          <span class="pagination-text">条</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <ul class="pagination flex items-center gap-1" id="pagination"></ul>
+          <div class="flex items-center gap-1">
+            <input
+              type="number"
+              id="pageInput"
+              min="1"
+              class="w-16 px-2 py-1 rounded-md text-sm form-input-themed"
+              placeholder="页码"
+            />
+            <button id="goToPageBtn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md">
+              跳转
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 详情模态框 -->
+<div id="logDetailModal" class="modal">
+  <div class="w-full max-w-6xl mx-auto rounded-2xl shadow-2xl overflow-hidden" style="background-color: #ffffff;">
+    <div class="p-6">
+      <div class="flex justify-between items-center pb-4 mb-4" style="border-bottom: 1px solid #e5e7eb">
+        <h2 class="text-xl font-bold text-gray-800">AI日志详情</h2>
+        <button id="closeLogDetailModalBtn" class="text-gray-600 hover:text-gray-800 text-xl">&times;</button>
+      </div>
+
+      <div class="space-y-4 max-h-[60vh] overflow-y-auto p-1">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="p-3 rounded-lg" style="background-color: #f8fafc">
+            <h6 class="text-sm font-semibold text-blue-600 mb-1">请求时间</h6>
+            <p id="modalRequestTime" class="text-gray-700"></p>
+          </div>
+          <div class="p-3 rounded-lg" style="background-color: #f8fafc">
+            <h6 class="text-sm font-semibold text-blue-600 mb-1">方法</h6>
+            <p id="modalMethod" class="text-gray-700"></p>
+          </div>
+          <div class="p-3 rounded-lg" style="background-color: #f8fafc">
+            <h6 class="text-sm font-semibold text-blue-600 mb-1">状态码</h6>
+            <p id="modalStatusCode" class="text-gray-700"></p>
+          </div>
+          <div class="p-3 rounded-lg" style="background-color: #f8fafc">
+            <h6 class="text-sm font-semibold text-blue-600 mb-1">耗时</h6>
+            <p id="modalLatency" class="text-gray-700"></p>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-lg" style="background-color: #f8fafc">
+          <h6 class="text-sm font-semibold text-blue-600 mb-1">请求路径</h6>
+          <p id="modalPath" class="text-gray-700 break-all"></p>
+        </div>
+
+        <div class="p-4 rounded-lg" style="background-color: #f8fafc">
+          <h6 class="text-sm font-semibold text-blue-600 mb-1">模型</h6>
+          <p id="modalModel" class="text-gray-700"></p>
+        </div>
+
+        <div class="p-4 rounded-lg relative group" style="background-color: #f8fafc">
+          <h6 class="text-sm font-semibold text-blue-600 mb-1">请求头</h6>
+          <pre id="modalRequestHeaders" class="font-mono text-sm p-3 rounded overflow-x-auto"></pre>
+          <button class="copy-btn absolute top-2 right-2 hover:bg-gray-200 text-gray-600 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity" style="background-color: #e2e8f0" data-target="modalRequestHeaders" title="复制">
+            <i class="far fa-copy"></i>
+          </button>
+        </div>
+
+        <div class="p-4 rounded-lg relative group" style="background-color: #f8fafc">
+          <h6 class="text-sm font-semibold text-blue-600 mb-1">请求体</h6>
+          <pre id="modalRequestBody" class="font-mono text-sm p-3 rounded overflow-x-auto max-h-64"></pre>
+          <button class="copy-btn absolute top-2 right-2 hover:bg-gray-200 text-gray-600 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity" style="background-color: #e2e8f0" data-target="modalRequestBody" title="复制">
+            <i class="far fa-copy"></i>
+          </button>
+        </div>
+
+        <div class="p-4 rounded-lg relative group" style="background-color: #f8fafc">
+          <h6 class="text-sm font-semibold text-blue-600 mb-1">响应体</h6>
+          <pre id="modalResponseBody" class="font-mono text-sm p-3 rounded overflow-x-auto max-h-64"></pre>
+          <button class="copy-btn absolute top-2 right-2 hover:bg-gray-200 text-gray-600 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity" style="background-color: #e2e8f0" data-target="modalResponseBody" title="复制">
+            <i class="far fa-copy"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex justify-end mt-6 pt-4" style="border-top: 1px solid #e5e7eb">
+        <button type="button" id="closeModalFooterBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium">
+          关闭
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div id="deleteConfirmModal" class="modal">
+  <div class="w-full max-w-md mx-auto rounded-xl shadow-xl overflow-hidden" style="background-color: #ffffff;">
+    <div class="p-6">
+      <div class="flex justify-between items-center pb-3 mb-4" style="border-bottom: 1px solid #e5e7eb">
+        <h2 class="text-lg font-semibold text-gray-800">确认删除</h2>
+        <button id="closeDeleteConfirmModalBtn" class="text-gray-600 hover:text-gray-800 text-xl">&times;</button>
+      </div>
+      <p id="deleteConfirmMessage" class="text-gray-700 mb-6">
+        你确定要删除选中的项目吗？此操作不可恢复！
+      </p>
+      <div class="flex justify-end gap-3">
+        <button id="cancelDeleteBtn" type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-5 py-2 rounded-lg font-medium">
+          取消
+        </button>
+        <button id="confirmDeleteBtn" type="button" class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-lg font-medium">
+          确认删除
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="notification" class="notification"></div>
+{% endblock %} {% block body_scripts %}
+<script>
+  // AI Logs JavaScript
+  const API_BASE = '/api/ai-logs';
+  let currentPage = 1;
+  let pageSize = 20;
+  let sortBy = 'id';
+  let sortOrder = 'desc';
+  let selectedIds = new Set();
+  let deleteMode = null; // 'selected' or 'all'
+
+  // DOM Elements
+  const aiLogsTable = document.getElementById('aiLogsTable');
+  const pagination = document.getElementById('pagination');
+  const loadingIndicator = document.getElementById('loadingIndicator');
+  const noDataMessage = document.getElementById('noDataMessage');
+  const errorMessage = document.getElementById('errorMessage');
+  const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+  const deleteAllLogsBtn = document.getElementById('deleteAllLogsBtn');
+  const searchBtn = document.getElementById('searchBtn');
+  const pageSizeSelect = document.getElementById('pageSize');
+  const goToPageBtn = document.getElementById('goToPageBtn');
+  const pageInput = document.getElementById('pageInput');
+
+  // Modal Elements
+  const logDetailModal = document.getElementById('logDetailModal');
+  const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', () => {
+    loadLogs();
+    setupEventListeners();
+  });
+
+  function setupEventListeners() {
+    searchBtn.addEventListener('click', () => { currentPage = 1; loadLogs(); });
+    pageSizeSelect.addEventListener('change', (e) => { pageSize = parseInt(e.target.value); currentPage = 1; loadLogs(); });
+    goToPageBtn.addEventListener('click', goToPage);
+    pageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') goToPage(); });
+    selectAllCheckbox.addEventListener('change', toggleSelectAll);
+    deleteSelectedBtn.addEventListener('click', () => showDeleteConfirm('selected'));
+    deleteAllLogsBtn.addEventListener('click', () => showDeleteConfirm('all'));
+
+    // Refresh button
+    document.getElementById('refreshBtn').addEventListener('click', () => { loadLogs(); showNotification('日志已刷新', 'success'); });
+
+    // Modal close handlers
+    document.getElementById('closeLogDetailModalBtn').addEventListener('click', () => logDetailModal.classList.remove('show'));
+    document.getElementById('closeModalFooterBtn').addEventListener('click', () => logDetailModal.classList.remove('show'));
+    document.getElementById('closeDeleteConfirmModalBtn').addEventListener('click', () => deleteConfirmModal.classList.remove('show'));
+    document.getElementById('cancelDeleteBtn').addEventListener('click', () => deleteConfirmModal.classList.remove('show'));
+    document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+
+    // Copy buttons
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const targetEl = document.getElementById(targetId);
+        if (targetEl) {
+          navigator.clipboard.writeText(targetEl.textContent);
+          showNotification('已复制到剪贴板', 'success');
+        }
+      });
+    });
+  }
+
+  async function loadLogs() {
+    showLoading(true);
+    hideMessages();
+
+    const params = new URLSearchParams({
+      limit: pageSize,
+      offset: (currentPage - 1) * pageSize,
+      sort_by: sortBy,
+      sort_order: sortOrder
+    });
+
+    const modelSearch = document.getElementById('modelSearch').value;
+    const statusCodeSearch = document.getElementById('statusCodeSearch').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    if (modelSearch) params.append('model_search', modelSearch);
+    if (statusCodeSearch) params.append('status_code_search', statusCodeSearch);
+    if (startDate) params.append('start_date', new Date(startDate).toISOString());
+    if (endDate) params.append('end_date', new Date(endDate).toISOString());
+
+    try {
+      const response = await fetch(`${API_BASE}?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch');
+
+      const data = await response.json();
+      renderTable(data.logs);
+      renderPagination(data.total);
+      selectedIds.clear();
+      updateDeleteButton();
+    } catch (error) {
+      console.error('Error loading logs:', error);
+      showError();
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  function renderTable(logs) {
+    if (!logs || logs.length === 0) {
+      aiLogsTable.innerHTML = '';
+      noDataMessage.classList.remove('hidden');
+      return;
+    }
+
+    noDataMessage.classList.add('hidden');
+    aiLogsTable.innerHTML = logs.map(log => `
+      <tr class="hover:bg-gray-50">
+        <td class="px-3 py-3 text-center">
+          <input type="checkbox" class="row-checkbox form-checkbox h-4 w-4 text-blue-500 rounded" data-id="${log.id}" ${selectedIds.has(log.id) ? 'checked' : ''}>
+        </td>
+        <td class="px-5 py-3" title="${log.content_preview || ''}">${log.content_preview || '-'}</td>
+        <td class="px-5 py-3 text-right">${formatNumber(log.prompt_tokens)}</td>
+        <td class="px-5 py-3 text-right">${formatNumber(log.completion_tokens)}</td>
+        <td class="px-5 py-3 text-right">${formatNumber(log.total_tokens)}</td>
+        <td class="px-5 py-3">${log.model_name || '-'}</td>
+        <td class="px-5 py-3">${formatDateTime(log.request_time)}</td>
+        <td class="px-5 py-3"><span class="${log.status_code < 400 ? 'status-success' : 'status-error'}">${log.status_code || '-'}</span></td>
+        <td class="px-5 py-3">${log.latency_ms ? log.latency_ms + 'ms' : '-'}</td>
+        <td class="px-5 py-3 text-center">
+          <button class="btn-view-details" onclick="viewDetails(${log.id})">
+            <i class="fas fa-eye mr-1"></i>详情
+          </button>
+        </td>
+      </tr>
+    `).join('');
+
+    // Add checkbox listeners
+    document.querySelectorAll('.row-checkbox').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        const id = parseInt(e.target.dataset.id);
+        if (e.target.checked) {
+          selectedIds.add(id);
+        } else {
+          selectedIds.delete(id);
+        }
+        updateDeleteButton();
+        updateSelectAllCheckbox();
+      });
+    });
+  }
+
+  function renderPagination(total) {
+    const totalPages = Math.ceil(total / pageSize);
+    let html = '';
+
+    if (totalPages <= 1) {
+      pagination.innerHTML = '';
+      return;
+    }
+
+    // Previous
+    html += `<a class="px-3 py-1.5 rounded ${currentPage === 1 ? 'disabled' : ''}" onclick="changePage(${currentPage - 1})"><i class="fas fa-chevron-left"></i></a>`;
+
+    // Page numbers
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+    if (endPage - startPage < maxVisible - 1) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    if (startPage > 1) {
+      html += `<a class="px-3 py-1.5 rounded" onclick="changePage(1)">1</a>`;
+      if (startPage > 2) html += `<a class="px-3 py-1.5 rounded disabled">...</a>`;
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      html += `<a class="px-3 py-1.5 rounded ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</a>`;
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) html += `<a class="px-3 py-1.5 rounded disabled">...</a>`;
+      html += `<a class="px-3 py-1.5 rounded" onclick="changePage(${totalPages})">${totalPages}</a>`;
+    }
+
+    // Next
+    html += `<a class="px-3 py-1.5 rounded ${currentPage === totalPages ? 'disabled' : ''}" onclick="changePage(${currentPage + 1})"><i class="fas fa-chevron-right"></i></a>`;
+
+    pagination.innerHTML = html;
+  }
+
+  function changePage(page) {
+    if (page < 1) return;
+    currentPage = page;
+    loadLogs();
+  }
+
+  function goToPage() {
+    const page = parseInt(pageInput.value);
+    if (page && page > 0) {
+      currentPage = page;
+      loadLogs();
+    }
+  }
+
+  function toggleSort(field) {
+    if (sortBy === field) {
+      sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortBy = field;
+      sortOrder = 'desc';
+    }
+    loadLogs();
+  }
+
+  function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => {
+      const id = parseInt(cb.dataset.id);
+      cb.checked = selectAllCheckbox.checked;
+      if (selectAllCheckbox.checked) {
+        selectedIds.add(id);
+      } else {
+        selectedIds.delete(id);
+      }
+    });
+    updateDeleteButton();
+  }
+
+  function updateSelectAllCheckbox() {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    const allChecked = checkboxes.length > 0 && Array.from(checkboxes).every(cb => cb.checked);
+    selectAllCheckbox.checked = allChecked;
+  }
+
+  function updateDeleteButton() {
+    deleteSelectedBtn.disabled = selectedIds.size === 0;
+  }
+
+  async function viewDetails(id) {
+    try {
+      const response = await fetch(`${API_BASE}/${id}/details`);
+      if (!response.ok) throw new Error('Failed to fetch details');
+
+      const log = await response.json();
+
+      document.getElementById('modalRequestTime').textContent = formatDateTime(log.request_time);
+      document.getElementById('modalMethod').textContent = log.method || '-';
+      document.getElementById('modalStatusCode').textContent = log.status_code || '-';
+      document.getElementById('modalLatency').textContent = log.latency_ms ? `${log.latency_ms}ms` : '-';
+      document.getElementById('modalPath').textContent = log.path || '-';
+      document.getElementById('modalModel').textContent = log.model_name || '-';
+      document.getElementById('modalRequestHeaders').textContent = formatJson(log.request_headers);
+      document.getElementById('modalRequestBody').textContent = formatJson(log.request_body);
+      document.getElementById('modalResponseBody').textContent = formatJson(log.response_body);
+
+      logDetailModal.classList.add('show');
+    } catch (error) {
+      console.error('Error fetching details:', error);
+      showNotification('获取详情失败', 'error');
+    }
+  }
+
+  function showDeleteConfirm(mode) {
+    deleteMode = mode;
+    const message = mode === 'all'
+      ? '你确定要删除所有AI日志吗？此操作不可恢复！'
+      : `你确定要删除选中的 ${selectedIds.size} 条日志吗？此操作不可恢复！`;
+    document.getElementById('deleteConfirmMessage').textContent = message;
+    deleteConfirmModal.classList.add('show');
+  }
+
+  async function confirmDelete() {
+    deleteConfirmModal.classList.remove('show');
+
+    try {
+      let response;
+      if (deleteMode === 'all') {
+        response = await fetch(`${API_BASE}/all`, { method: 'DELETE' });
+      } else {
+        response = await fetch(API_BASE, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: Array.from(selectedIds) })
+        });
+      }
+
+      if (response.ok) {
+        showNotification('删除成功', 'success');
+        selectedIds.clear();
+        loadLogs();
+      } else {
+        throw new Error('Delete failed');
+      }
+    } catch (error) {
+      console.error('Error deleting:', error);
+      showNotification('删除失败', 'error');
+    }
+  }
+
+  // Utility functions
+  function formatDateTime(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+  }
+
+  function formatNumber(num) {
+    if (num === null || num === undefined) return '-';
+    return num.toLocaleString('zh-CN');
+  }
+
+  function formatJson(str) {
+    if (!str) return '-';
+    try {
+      return JSON.stringify(JSON.parse(str), null, 2);
+    } catch {
+      return str;
+    }
+  }
+
+  function showLoading(show) {
+    loadingIndicator.classList.toggle('hidden', !show);
+    if (show) {
+      aiLogsTable.innerHTML = '';
+    }
+  }
+
+  function hideMessages() {
+    noDataMessage.classList.add('hidden');
+    errorMessage.classList.add('hidden');
+  }
+
+  function showError() {
+    errorMessage.classList.remove('hidden');
+  }
+
+  function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.className = `notification ${type}`;
+    notification.classList.add('show');
+    setTimeout(() => notification.classList.remove('show'), 3000);
+  }
+</script>
+{% endblock %}
